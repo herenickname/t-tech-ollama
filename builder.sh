@@ -3,6 +3,16 @@
 # Убедитесь, что у вас есть необходимые права для выполнения скрипта:
 # chmod +x build_models.sh
 
+# Функция для установки ollama, если она не установлена
+install_ollama() {
+  if ! command -v ollama &> /dev/null; then
+    echo "ollama не найдена. Устанавливаю..."
+    curl -fsSL https://ollama.com/install.sh | sh
+  else
+    echo "ollama уже установлена."
+  fi
+}
+
 # Функция для установки и очистки после сборки
 build_model() {
   MODEL_NAME=$1
@@ -14,6 +24,12 @@ build_model() {
 
   # Скачиваем модель
   ./hfdownloader_linux_amd64_1.4.2 -m $MODEL_NAME
+
+  # Конвертируем модель в формат GGUF
+  python3 llama.cpp/convert_hf_to_gguf.py --outfile ./${FILE_NAME}_bf16.gguf --outtype bf16 ./${FILE_NAME}
+
+  # Квантование модели
+  ./llama.cpp/build/bin/llama-quantize ./${FILE_NAME}_bf16.gguf Q4_K_M
 
   # Чтение содержимого файлов
   template_content=$(cat ./template)
@@ -30,22 +46,16 @@ LICENSE """$license_content"""
 EOL
   echo "Файл Modelfile успешно создан."
 
-  # Конвертируем модель в формат GGUF
-  python3 convert_hf_to_gguf.py --outfile ../${FILE_NAME}_bf16.gguf --outtype bf16 ../${FILE_NAME}
-
-  # Квантование модели
-  ./build/bin/llama-quantize ../${FILE_NAME}_bf16.gguf Q4_K_M
-
   # Создание модели
-  ollama create -f Modelfile herenickname/$MODEL_NAME:q4_k_m
+  ollama create -f Modelfile herenickname/$FILE_NAME:q4_k_m
 
   # Тестирование модели
-  ollama run --verbose $MODEL_NAME:q4_k_m "Как называется модель?"
+  ollama run --verbose herenickname/$FILE_NAME:q4_k_m "Как называется модель?"
 
   # Удаление временных файлов
   echo "Удаление временных файлов для $MODEL_NAME"
   rm -rf ggml-model-Q4_K_M.gguf
-  rm -rf ../${FILE_NAME}_bf16.gguf
+  rm -rf ${FILE_NAME}_bf16.gguf
   rm -rf $FILE_NAME
   rm -rf Modelfile
 
@@ -56,15 +66,16 @@ EOL
 echo "Обновление apt"
 apt update
 
-echo "Установка ollama"
-curl -fsSL https://ollama.com/install.sh | sh
+# Устанавливаем ollama, если она еще не установлена
+install_ollama
 
 echo "Установка hfdownloader"
 wget https://github.com/bodaay/HuggingFaceModelDownloader/releases/download/1.4.2/hfdownloader_linux_amd64_1.4.2
+chmod +x hfdownloader_linux_amd64_1.4.2
 
 # Устанавливаем все зависимости
 echo "Установка зависимостей"
-apt install git cmake build-essential python3 pip python3.11-venv
+apt install -y git cmake build-essential python3 pip python3.11-venv
 
 # Клонируем репозиторий llama.cpp
 echo "Клонирование llama.cpp"
@@ -81,6 +92,9 @@ echo "Создание виртуального окружения"
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+# Возвращаемся в корень
+cd ..
 
 # Сборка моделей t-lite и t-pro
 build_model "t-tech/T-lite-it-1.0" "t-tech_T-lite-it-1.0" "system.t-lite"
