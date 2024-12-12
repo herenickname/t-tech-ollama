@@ -68,7 +68,7 @@ apt install git cmake build-essential python3 pip python3.11-venv
 
 # Клонируем репозиторий llama.cpp
 echo "Клонирование llama.cpp"
-git clone https://github.com/ggerganov/llama.cpp
+git clone --depth 1 https://github.com/ggerganov/llama.cpp
 cd llama.cpp
 
 # Собираем llama.cpp
