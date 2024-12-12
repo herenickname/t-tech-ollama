@@ -1,1 +1,3 @@
 Template file from: https://ollama.com/library/qwen2.5:72b/blobs/eb4402837c78
+
+Не забудьте перед запуском builder.sh импортировать в Ollama свой публичный ключ.
