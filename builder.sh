@@ -44,6 +44,7 @@ EOL
 
   # Удаление временных файлов
   echo "Удаление временных файлов для $MODEL_NAME"
+  rm -rf ggml-model-Q4_K_M.gguf
   rm -rf ../${FILE_NAME}_bf16.gguf
   rm -rf $FILE_NAME
   rm -rf Modelfile
